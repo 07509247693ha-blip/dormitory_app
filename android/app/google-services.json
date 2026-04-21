@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "689603811376",
+    "project_id": "dormitory-management-sys-8e843",
+    "storage_bucket": "dormitory-management-sys-8e843.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:689603811376:android:fee3cf28ad33b96c1a35f5",
+        "android_client_info": {
+          "package_name": "com.example.dormitory_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAThQWlN1LOe9AZvyKk4N0Z9U6kDj_BdmU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
