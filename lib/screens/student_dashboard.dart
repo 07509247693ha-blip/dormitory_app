@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'package:dormitory_app/notification_service.dart';
@@ -20,6 +22,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      if (!kIsWeb && user.email != 'admin@test.com') {
+        FirebaseMessaging.instance.subscribeToTopic('announcements');
+      }
+
       FirebaseFirestore.instance
           .collection('requests')
           .where('uid', isEqualTo: user.uid)
@@ -231,6 +237,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
+              if (!kIsWeb) {
+                await FirebaseMessaging.instance.unsubscribeFromTopic(
+                  'announcements',
+                );
+              }
               await FirebaseAuth.instance.signOut();
               if (!context.mounted) {
                 return;

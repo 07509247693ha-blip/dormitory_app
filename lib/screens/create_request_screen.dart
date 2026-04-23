@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dormitory_app/fcm_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -64,13 +65,6 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
     }
   }
 
-  Future<void> _sendNotificationSimulated(String type, String desc) async {
-    print('إشعار جديد للإدارة:');
-    print('النوع: $type');
-    print('التفاصيل: $desc');
-    print('-------------------------');
-  }
-
   void _sendRequest() async {
     if (_isLoadingUserData) {
       return;
@@ -95,7 +89,7 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
     try {
       await FirebaseFirestore.instance.collection('requests').add({
         'type': _selectedType,
-        'description': _descriptionController.text,
+        'description': _descriptionController.text.trim(),
         'status': 'جديد',
         'createdAt': FieldValue.serverTimestamp(),
         'uid': user?.uid,
@@ -104,17 +98,30 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         'roomNumber': _roomNumber,
       });
 
-      await _sendNotificationSimulated(
-        _selectedType!,
-        _descriptionController.text,
-      );
+      try {
+        await FcmService.sendTopicNotification(
+          topic: 'admin_alerts',
+          title: 'طلب جديد: ${_selectedType ?? 'طلب'}',
+          body:
+              'تم إرسال ${_selectedType ?? 'طلب'} من ${_studentFullName ?? 'طالب'}',
+        );
+      } catch (e) {
+        debugPrint('FCM admin_alerts send failed: $e');
+      }
 
       if (!mounted) {
         return;
       }
 
+      final isComplaint = _selectedType == 'شكوى/اقتراح';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال الطلب وتنبيه الإدارة بنجاح')),
+        SnackBar(
+          content: Text(
+            isComplaint
+                ? 'تم إرسال الشكوى بنجاح وسيصل تنبيه للإدارة'
+                : 'تم إرسال الطلب بنجاح',
+          ),
+        ),
       );
       Navigator.pop(context);
     } catch (e) {
@@ -141,7 +148,7 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
       body: _isLoadingUserData
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -165,7 +172,7 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
                               DropdownMenuItem(value: type, child: Text(type)),
                         )
                         .toList(),
-                    onChanged: (val) => setState(() => _selectedType = val),
+                    onChanged: (value) => setState(() => _selectedType = value),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -177,7 +184,7 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
                     controller: _descriptionController,
                     maxLines: 5,
                     decoration: InputDecoration(
-                      hintText: 'اكتب المشكلة بالتفصيل هنا...',
+                      hintText: 'اكتب تفاصيل المشكلة هنا...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# تجاهل الملف السري الخاص بجوجل
+assets/service_account.json
+
+# تجاهل مكتبات نود (مهم جداً)
+functions/node_modules/

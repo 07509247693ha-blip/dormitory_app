@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dormitory_app/fcm_service.dart';
 import 'package:dormitory_app/screens/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -87,6 +88,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'body': body,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      try {
+        await FcmService.sendTopicNotification(
+          topic: 'announcements',
+          title: title,
+          body: body,
+        );
+      } catch (e) {
+        debugPrint('FCM announcements send failed: $e');
+      }
     } catch (e) {
       print('خطأ في نشر الإعلان: $e');
     }
@@ -160,6 +171,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Future<void> _signOut() async {
+    if (!kIsWeb) {
+      await FirebaseMessaging.instance.unsubscribeFromTopic('admin_alerts');
+    }
     await FirebaseAuth.instance.signOut();
     if (!mounted) {
       return;
