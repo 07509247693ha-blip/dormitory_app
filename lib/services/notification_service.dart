@@ -1,40 +1,54 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  NotificationService._();
 
-  Future<void> initialize() async {
-    try {
-      // 1. طلب الصلاحية
-      NotificationSettings settings = await _messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+  static final instance = NotificationService._();
+  final _notifications = FlutterLocalNotificationsPlugin();
 
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        print('تم منح صلاحية الإشعارات ✅');
-        
-        try {
-          String? token = await _messaging.getToken();
-          print('FCM Token: $token');
-        } catch (e) {
-          print('تحذير: لم نتمكن من جلب Token على المتصفح: $e');
-        }
+  Future<void> initNotification() async {
+    await _notifications.initialize(
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      ),
+    );
 
-        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          print('وصل إشعار من السحاب: ${message.notification?.title}');
-        });
+    await FirebaseMessaging.instance.requestPermission();
+    debugPrint('FCM Token: ${await FirebaseMessaging.instance.getToken()}');
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.requestNotificationsPermission();
+
+    FirebaseMessaging.onMessage.listen((message) {
+      final notification = message.notification;
+      if (notification != null) {
+        showNotification(
+          title: notification.title ?? 'إشعار جديد',
+          body: notification.body ?? '',
+        );
       }
-    } catch (e) {
-      print("⚠️ مشكلة في تشغيل الإشعارات: $e");
-    }
+    });
   }
 
-  // دالة الإشعار المحلي
-  Future<void> showInstantNotification(String title, String body) async {
-    // على المتصفح، النظام يمنع النوافذ المنبثقة المباشرة، لذا نكتفي بالطباعة
-    // وسنعتمد على الـ SnackBar الذي أضفناه في شاشة الإرسال ليعرف الطالب بنجاح العملية
-    print("🔔 تنبيه تم تنفيذه: $title - $body");
-  }
+  Future<void> showNotification({
+    required String title,
+    required String body,
+  }) => _notifications.show(
+    id: 0,
+    title: title,
+    body: body,
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'dormitory_channel',
+        'Dormitory Notifications',
+        channelDescription: 'Notifications for the dormitory application',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+    ),
+  );
 }

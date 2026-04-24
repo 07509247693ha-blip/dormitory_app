@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dormitory_app/fcm_service.dart';
+import 'package:dormitory_app/services/fcm_service.dart';
+import 'package:dormitory_app/widgets/custom_widgets.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -11,10 +12,10 @@ class CreateRequestScreen extends StatefulWidget {
 }
 
 class _CreateRequestScreenState extends State<CreateRequestScreen> {
-  String? _selectedType = 'صيانة';
-  final TextEditingController _descriptionController = TextEditingController();
-  final List<String> _requestTypes = ['صيانة', 'نقل', 'شكوى/اقتراح'];
+  final _descriptionController = TextEditingController();
+  final _requestTypes = const ['صيانة', 'نقل', 'شكوى/اقتراح'];
 
+  String? _selectedType = 'صيانة';
   bool _isLoadingUserData = true;
   String? _studentFullName;
   String? _roomNumber;
@@ -27,60 +28,42 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
 
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
-
     if (user == null) {
-      if (mounted) {
-        setState(() {
-          _isLoadingUserData = false;
-        });
-      }
+      if (mounted) setState(() => _isLoadingUserData = false);
       return;
     }
 
     try {
-      final userDoc = await FirebaseFirestore.instance
+      final data = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
-
-      final data = userDoc.data();
-
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _studentFullName = data.data()?['fullName'] as String?;
+          _roomNumber = data.data()?['roomNumber'] as String?;
+          _isLoadingUserData = false;
+        });
       }
-
-      setState(() {
-        _studentFullName = data?['fullName'] as String?;
-        _roomNumber = data?['roomNumber'] as String?;
-        _isLoadingUserData = false;
-      });
     } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingUserData = false;
-      });
+      if (mounted) setState(() => _isLoadingUserData = false);
     }
   }
 
-  void _sendRequest() async {
-    if (_isLoadingUserData) {
-      return;
-    }
+  bool get _canSend =>
+      !_isLoadingUserData &&
+      _descriptionController.text.isNotEmpty &&
+      _studentFullName != null &&
+      _roomNumber != null;
 
+  Future<void> _sendRequest() async {
     if (_descriptionController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('يرجى كتابة تفاصيل الطلب')));
+      showAppSnackBar(context, 'يرجى كتابة تفاصيل الطلب');
       return;
     }
 
     if (_studentFullName == null || _roomNumber == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تعذر تحميل بيانات الطالب، حاول مجددًا')),
-      );
+      showAppSnackBar(context, 'تعذر تحميل بيانات الطالب، حاول مجددًا');
       return;
     }
 
@@ -109,114 +92,64 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         debugPrint('FCM admin_alerts send failed: $e');
       }
 
-      if (!mounted) {
-        return;
-      }
-
-      final isComplaint = _selectedType == 'شكوى/اقتراح';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isComplaint
-                ? 'تم إرسال الشكوى بنجاح وسيصل تنبيه للإدارة'
-                : 'تم إرسال الطلب بنجاح',
-          ),
-        ),
+      if (!mounted) return;
+      showAppSnackBar(
+        context,
+        _selectedType == 'شكوى/اقتراح'
+            ? 'تم إرسال الشكوى بنجاح وسيصل تنبيه للإدارة'
+            : 'تم إرسال الطلب بنجاح',
       );
       Navigator.pop(context);
     } catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('حدث خطأ: $e')));
+      if (mounted) showAppSnackBar(context, 'حدث خطأ: $e');
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('إنشاء طلب جديد'),
-        centerTitle: true,
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+  Widget _buildForm() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      sectionTitle('نوع الطلب'),
+      const SizedBox(height: 10),
+      appDropdownField(
+        value: _selectedType,
+        labelText: 'اختر نوع الطلب',
+        icon: Icons.list_alt,
+        values: _requestTypes,
+        onChanged: (value) => setState(() => _selectedType = value),
       ),
-      body: _isLoadingUserData
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'نوع الطلب',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedType,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    items: _requestTypes
-                        .map(
-                          (type) =>
-                              DropdownMenuItem(value: type, child: Text(type)),
-                        )
-                        .toList(),
-                    onChanged: (value) => setState(() => _selectedType = value),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'تفاصيل الطلب',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText: 'اكتب تفاصيل المشكلة هنا...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _sendRequest,
-                      child: const Text(
-                        'إرسال الطلب',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
-  }
+      const SizedBox(height: 20),
+      sectionTitle('تفاصيل الطلب'),
+      const SizedBox(height: 10),
+      appTextField(
+        controller: _descriptionController,
+        labelText: 'تفاصيل الطلب',
+        icon: Icons.description,
+        maxLines: 5,
+        hintText: 'اكتب تفاصيل المشكلة هنا...',
+        onChanged: (_) => setState(() {}),
+      ),
+      const SizedBox(height: 40),
+      appPrimaryButton(
+        label: 'إرسال الطلب',
+        onPressed: _canSend ? _sendRequest : null,
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Colors.grey[100],
+    appBar: AppBar(
+      title: const Text('إنشاء طلب جديد'),
+      centerTitle: true,
+      backgroundColor: Colors.blue,
+      foregroundColor: Colors.white,
+    ),
+    body: _isLoadingUserData
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: _buildForm(),
+          ),
+  );
 }
