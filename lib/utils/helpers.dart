@@ -68,7 +68,7 @@ void pushReplacementScreen(BuildContext context, Widget screen) =>
       context,
       MaterialPageRoute(builder: (_) => screen),
     );
-
+//تدمير كل الشاشات عن الضغط على تسجيل الخروج
 void pushAndClearScreen(BuildContext context, Widget screen) =>
     Navigator.pushAndRemoveUntil(
       context,

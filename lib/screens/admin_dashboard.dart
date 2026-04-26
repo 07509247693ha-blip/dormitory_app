@@ -152,7 +152,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-
+//flutter run
   Future<void> _signOut() async {
     await signOut(topic: 'admin_alerts');
     if (!mounted) return;
@@ -218,7 +218,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'الغرفة: ${data['roomNumber'] ?? 'غير محددة'}',
+                        // التعديل هنا: إضافة المجمع والمبنى للوحة المدير
+                        ' ${data['complexName'] ?? '-'} | مبنى: ${data['buildingNumber'] ?? '-'} | الغرفة: ${data['roomNumber'] ?? '-'}',
                         style: TextStyle(color: Colors.grey[700]),
                       ),
                       const SizedBox(height: 4),
@@ -243,7 +244,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               style: const TextStyle(fontSize: 15),
             ),
             const SizedBox(height: 12),
-            Row(
+            // التعديل هنا: استبدال Row بـ Wrap لحل مشكلة Overflow التي ظهرت في صورتك
+            Wrap(
+              spacing: 8.0, // مسافة أفقية بين الأزرار
+              runSpacing: 8.0, // مسافة عمودية إذا نزل الزر لسطر جديد
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -262,21 +267,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                   ),
                 ),
-                const Spacer(),
-                if (data['type'] == 'صيانة') ...[
+                if (data['type'] == 'صيانة')
                   OutlinedButton.icon(
                     onPressed: () => _pickScheduledDate(doc.id),
                     icon: const Icon(Icons.calendar_today, size: 16),
                     label: const Text('تحديد موعد'),
                   ),
-                  const SizedBox(width: 8),
-                ],
                 if (statusValue != 'قيد التنفيذ')
                   _statusButton(doc.id, 'قيد التنفيذ', Colors.orange),
-                if (statusValue != 'مكتمل') ...[
-                  const SizedBox(width: 8),
+                if (statusValue != 'مكتمل')
                   _statusButton(doc.id, 'مكتمل', Colors.blue),
-                ],
               ],
             ),
           ],
@@ -284,7 +284,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
-
+//استخدام StreamBuilder لتحديث حالة الطلب بسرعة من خلال مراقبة اي تغير واعادة رسم الواجهة 
   Widget _buildRequestsList(String filter) =>
       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _requestQuery(filter).snapshots(),

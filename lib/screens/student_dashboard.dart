@@ -15,7 +15,7 @@ class StudentDashboard extends StatefulWidget {
   @override
   State<StudentDashboard> createState() => _StudentDashboardState();
 }
-
+//initState ملاحظة اي تغير يجريه المدير على حالة الطلب وارسال اشعار
 class _StudentDashboardState extends State<StudentDashboard> {
   @override
   void initState() {
@@ -131,7 +131,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         stream: FirebaseFirestore.instance
             .collection('announcements')
             .orderBy('createdAt', descending: true)
-            .limit(3)
+            .limit(3)// استدعاء فقط اخر 3 اعلانات
             .snapshots(),
         builder: (_, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -140,9 +140,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return const Text('لا توجد إعلانات حالياً');
           }
-
+//لوحة الاعلانات 
           return SizedBox(
-            height: 150,
+            height: 170,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: snapshot.data!.docs.length,
@@ -186,7 +186,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget _buildRequestsSection() => Expanded(
     child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('requests')
+          .collection('requests')//(استعلام مشروط Query) في قاعدة البيانات يجلب فقط الطلبات التي يتطابق فيها uid الطلب مع uid الهاتف الحالي
           .where('uid', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
           .orderBy('createdAt', descending: true)
           .snapshots(),
@@ -268,19 +268,48 @@ class _StudentDashboardState extends State<StudentDashboard> {
         children: [
           sectionTitle('بيانات الغرفة'),
           const SizedBox(height: 10),
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const ListTile(
-              leading: Icon(Icons.meeting_room, color: Colors.blue, size: 40),
-              title: Text(
-                'المبنى: 3 | الطابق: 2',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text('الغرفة: 205 | القطاع: ج'),
-            ),
+StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('users')
+                .doc(FirebaseAuth.instance.currentUser?.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (!snapshot.hasData || !snapshot.data!.exists) {
+                return const Card(
+                  child: ListTile(title: Text('جاري تحميل بيانات الغرفة...')),
+                );
+              }
+
+              // سحب البيانات الفعلية للطالب من قاعدة البيانات
+              final userData = snapshot.data!.data()!;
+              final building = userData['buildingNumber'] ?? '-';
+              final floor = userData['floorLevel'] ?? '-';
+              final room = userData['roomNumber'] ?? '-';
+              final sector = userData['sector'] ?? '-';
+              final complex = userData['complexName'] ?? 'مجمع غير محدد';
+
+              return Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.meeting_room, color: Colors.blue, size: 40),
+                  title: Text(
+                    'المبنى: $building | الطابق: $floor',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text('الغرفة: $room | القطاع: $sector\n$complex'),
+                  ),
+                  isThreeLine: true, // للسماح بعرض اسم المجمع في سطر جديد
+                ),
+              );
+            },
           ),
           const SizedBox(height: 30),
           sectionTitle('إعلانات الإدارة'),

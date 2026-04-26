@@ -19,6 +19,8 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
   bool _isLoadingUserData = true;
   String? _studentFullName;
   String? _roomNumber;
+  String? _complexName; // إضافة متغير المجمع
+  String? _buildingNumber; // إضافة متغير المبنى
 
   @override
   void initState() {
@@ -42,6 +44,8 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         setState(() {
           _studentFullName = data.data()?['fullName'] as String?;
           _roomNumber = data.data()?['roomNumber'] as String?;
+          _complexName = data.data()?['complexName'] as String?; // جلب المجمع
+          _buildingNumber = data.data()?['buildingNumber'] as String?; // جلب المبنى
           _isLoadingUserData = false;
         });
       }
@@ -79,6 +83,8 @@ class _CreateRequestScreenState extends State<CreateRequestScreen> {
         'studentEmail': user?.email,
         'studentName': _studentFullName,
         'roomNumber': _roomNumber,
+        'complexName': _complexName, // إرسال المجمع للوحة الإدارة
+        'buildingNumber': _buildingNumber, // إرسال المبنى للوحة الإدارة
       });
 
       try {

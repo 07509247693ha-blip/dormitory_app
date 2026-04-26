@@ -17,20 +17,20 @@ class _SignupScreenState extends State<SignupScreen> {
   final _roomNumberController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  final _complexes = const [
-    'المجمع الأول - الحوت',
-    'المجمع الثاني - صيدنايا',
-    'المجمع الثالث - ابو غريب',
-    'المجمع الرابع - التاجي',
-    'المجمع الخامس - زويرا',
-    'المجمع السادس - بادوش',
-    'المجمع السابع - بوكا',
-  ];
-  final _buildings = const ['1', '2', '3', '4', '5', '6', '7'];
+  // هندسة البيانات: ربط اسم المجمع برقم المبنى مباشرة
+  final Map<String, String> _complexData = const {
+    'المجمع الأول - الحوت': '1',
+    'المجمع الثاني - صيدنايا': '2',
+    'المجمع الثالث - ابو غريب': '3',
+    'المجمع الرابع - التاجي': '4',
+    'المجمع الخامس - زويرا': '5',
+    'المجمع السادس - بادوش': '6',
+    'المجمع السابع - بوكا': '7',
+  };
+  
   final _sectors = const ['أ', 'ب', 'ج', 'د'];
 
   String _selectedComplex = 'المجمع الأول - الحوت';
-  String _selectedBuilding = '1';
   String _selectedSector = 'أ';
   bool _isLoading = false;
 
@@ -55,8 +55,8 @@ class _SignupScreenState extends State<SignupScreen> {
             'fullName': _fullNameController.text.trim(),
             'email': _emailController.text.trim(),
             'roomNumber': roomNumber,
-            'complexName': _selectedComplex,
-            'buildingNumber': _selectedBuilding,
+            'complexName': _selectedComplex, // اسم المجمع
+            'buildingNumber': _complexData[_selectedComplex], // رقم المبنى يسحب تلقائياً
             'sector': _selectedSector,
             'floorLevel': getFloorLevel(roomNumber),
             'createdAt': FieldValue.serverTimestamp(),
@@ -64,10 +64,28 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (mounted) showAppSnackBar(context, 'تم إنشاء الحساب بنجاح');
       if (mounted) Navigator.pop(context);
+
     } on FirebaseAuthException catch (e) {
       if (mounted) {
-        showAppSnackBar(context, e.message ?? 'حدث خطأ أثناء إنشاء الحساب');
+        String errorMessage;
+        
+        // هنا يتم فحص رمز الخطأ القادم من السيرفر وعرض مقابله بالعربي
+        if (e.code == 'email-already-in-use') {
+          errorMessage = 'هذا البريد الإلكتروني مستخدم بالفعل لحساب آخر.';
+        } else if (e.code == 'weak-password') {
+          errorMessage = 'كلمة المرور ضعيفة جداً، يرجى اختيار كلمة أقوى.';
+        } else if (e.code == 'invalid-email') {
+          errorMessage = 'صيغة البريد الإلكتروني غير صحيحة.';
+        } else {
+          // في حال وجود خطأ آخر غير متوقع من فايربيس
+          errorMessage = 'حدث خطأ أثناء إنشاء الحساب: ${e.message}';
+        }
+        
+        showAppSnackBar(context, errorMessage);
       }
+    } catch (e) {
+      // صيد الأخطاء العامة التي ليست من فايربيس
+      if (mounted) showAppSnackBar(context, 'حدث خطأ غير متوقع، حاول مجدداً');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -98,36 +116,18 @@ class _SignupScreenState extends State<SignupScreen> {
             const SizedBox(height: 20),
             appDropdownField(
               value: _selectedComplex,
-              labelText: 'المجمع',
+              labelText: 'المجمع / المبنى', // تم تحديث التسمية
               icon: Icons.location_city,
-              values: _complexes,
+              values: _complexData.keys.toList(), // جلب المفاتيح (أسماء المجمعات)
               onChanged: (value) => setState(() => _selectedComplex = value!),
             ),
             const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: appDropdownField(
-                    value: _selectedBuilding,
-                    labelText: 'المبنى',
-                    icon: Icons.business,
-                    values: _buildings,
-                    onChanged: (value) =>
-                        setState(() => _selectedBuilding = value!),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: appDropdownField(
-                    value: _selectedSector,
-                    labelText: 'القطاع',
-                    icon: Icons.grid_view,
-                    values: _sectors,
-                    onChanged: (value) =>
-                        setState(() => _selectedSector = value!),
-                  ),
-                ),
-              ],
+            appDropdownField(
+              value: _selectedSector,
+              labelText: 'القطاع',
+              icon: Icons.grid_view,
+              values: _sectors,
+              onChanged: (value) => setState(() => _selectedSector = value!),
             ),
             const SizedBox(height: 20),
             appTextField(
